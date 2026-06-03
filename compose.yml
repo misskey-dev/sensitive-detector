@@ -1,0 +1,67 @@
+# sensitive-detector を Docker で動かすための compose 定義。
+#
+#   cp .env.example .env        # SENSITIVE_DETECTOR_API_KEY を埋める（必須）
+#   docker compose up -d --build
+#
+# モデルは Dockerfile で /models に同梱済み。config だけ実行時にマウントする。
+# 差し替えたいモデルがある場合は services.sensitive-detector.volumes に
+#   - /path/to/nsfw-model:/models:ro
+# を足して上書きする。
+
+services:
+  sensitive-detector:
+    build:
+      context: .
+      target: runtime
+    image: sensitive-detector:latest
+    # apiKey は秘密なので .env 経由で注入する（config.docker.mjs が env から読む）。
+    env_file:
+      - .env
+    ports:
+      # 左がホスト側（HOST_PORT、既定 3009）、右はコンテナ内の固定ポート（config.docker.mjs の port と一致）。
+      - "${HOST_BIND:-127.0.0.1}:${HOST_PORT:-3009}:3009"
+    volumes:
+      # config はイメージに焼かず read-only でマウントする（apiKey 以外の調整もここで完結）。
+      - ./config.docker.mjs:/config/config.mjs:ro
+    restart: unless-stopped
+
+    # --- ヘルスチェック ---
+    # 認証不要の GET /health を叩く。モデル未ロード(model_unavailable)・全スロット詰まり
+    # (inference_saturated)なら 503 を返すので、200 のみ healthy とみなす。
+    # 注意: compose の restart は exit 契機で、healthcheck failure では再起動しない。hung 推論からの
+    # 自動回復は、サチュレーション継続時にサーバ自身が self-exit する（→ restart: unless-stopped が再起動）。
+    # base イメージ(node:22-bookworm-slim)に curl/wget は無いので node で確認する。
+    healthcheck:
+      test: ["CMD", "node", "/scripts/healthcheck.mjs"]
+      interval: 30s
+      timeout: 5s
+      # モデルロード（起動時 1 回、数秒〜十数秒）が終わるまでは unhealthy 扱いにしない。
+      start_period: 40s
+      retries: 3
+
+    # --- リソース制限 ---
+    # tfjs-node がモデルをメモリ常駐させ、推論時に CPU を使う。環境に合わせて調整する。
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+        reservations:
+          memory: 512m
+
+    # --- セキュリティ強化 ---
+    # attacker-controlled な画像バイトを処理するサービスなので、権限は最小に絞る。
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    # read_only ルート FS 下で Node が書き込む先（tmp）を逃がす。
+    tmpfs:
+      - /tmp
+
+    # --- ログ rotation ---
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

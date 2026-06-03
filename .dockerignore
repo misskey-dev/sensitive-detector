@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+node_modules
+**/node_modules
+**/dist
+.git
+.gitignore
+.pnpm-store
+coverage
+**/*.tsbuildinfo
+*.log
+.agents
+.claude
+要件定義.md
+README.md
+config.dev.*
