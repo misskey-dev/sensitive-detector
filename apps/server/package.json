@@ -1,0 +1,23 @@
+{
+  "name": "@misskey-sensitive-detector/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/main.mjs",
+  "scripts": {
+    "build": "tsdown",
+    "clean": "rm -rf dist",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "catalog:",
+    "@misskey-sensitive-detector/core": "workspace:*",
+    "hono": "catalog:",
+    "pino": "catalog:"
+  },
+  "devDependencies": {
+    "pino-pretty": "catalog:"
+  }
+}

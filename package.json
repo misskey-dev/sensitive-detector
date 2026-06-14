@@ -1,0 +1,30 @@
+{
+  "name": "sensitive-detector",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.1.2",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm --filter @misskey-sensitive-detector/core build && pnpm --filter @misskey-sensitive-detector/server build",
+    "clean": "pnpm --filter @misskey-sensitive-detector/core clean && pnpm --filter @misskey-sensitive-detector/server clean",
+    "typecheck": "pnpm --filter @misskey-sensitive-detector/core build && pnpm -r --sort --if-present typecheck",
+    "dev": "pnpm --filter @misskey-sensitive-detector/server dev",
+    "start": "pnpm --filter @misskey-sensitive-detector/server start",
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
+    "lint": "pnpm exec -- biome check .",
+    "format": "pnpm exec -- biome format --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
