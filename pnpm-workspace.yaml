@@ -9,7 +9,7 @@ allowBuilds:
 
 catalog:
   '@biomejs/biome': 2.4.16
-  '@hono/node-server': 1.19.14
+  '@hono/node-server': 2.0.4
   '@tensorflow/tfjs': 4.22.0
   '@tensorflow/tfjs-node': 4.22.0
   '@types/node': 22.19.19
