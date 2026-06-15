@@ -20,7 +20,7 @@ catalog:
   systeminformation: 5.31.7
   tsdown: 0.22.1
   tsx: 4.22.4
-  typescript: 5.9.3
+  typescript: 6.0.3
   vitest: 4.1.8
 
 # @tensorflow/tfjs-node はネイティブアドオン（libtensorflow + node-gyp ビルド）を持つ。
