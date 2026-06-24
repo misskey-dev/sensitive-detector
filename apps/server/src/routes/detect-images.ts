@@ -4,7 +4,7 @@ import { mapWithConcurrency } from '../lib/concurrency.js';
 import { exceedsImageLimits, readImageDimensions } from '../lib/image-metadata.js';
 import type { AppDeps, AppEnv } from '../types.js';
 
-const ACCEPTED_CONTENT_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/bmp']);
+const ACCEPTED_CONTENT_TYPES = new Set(['image/png']);
 
 function parseContentType(value: string): string {
   return value.split(';')[0]?.trim().toLowerCase() ?? '';

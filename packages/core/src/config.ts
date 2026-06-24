@@ -31,7 +31,7 @@ export type Config = {
    * コンテナ等で外部公開する場合のみ '0.0.0.0' を明示する。socket 待ち受けでは無視される。
    */
   host?: string;
-  /** nsfwjs モデルディレクトリ（必須）。 */
+  /** ONNX モデルディレクトリ（必須）。 */
   modelDir: string;
   /** 静的な共有シークレット（設定者が決めて、リクエスト元と共有する）。設定すると `Authorization: Bearer <この値>` ヘッダーが必須になる。 */
   apiKey?: string;

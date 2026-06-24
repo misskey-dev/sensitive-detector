@@ -7,11 +7,11 @@ const NSFW_CLASS_NAMES = ['Drawing', 'Hentai', 'Neutral', 'Porn', 'Sexy'];
 
 const d = (await integrationEnabled()) ? describe : describe.skip;
 
-d('classifier (real nsfwjs model)', () => {
+d('classifier (real ONNX model)', () => {
   let classifier: Classifier;
 
   beforeAll(async () => {
-    // 実モデルを file:// 経路でロードする（参照: AiService.ts:53）。
+    // 実モデルをファイルパスでロードする（ORT は file:// URL ではなくパスを受け取る）。
     classifier = await createClassifier(TEST_MODEL_DIR);
   });
 
@@ -39,6 +39,12 @@ d('classifier (real nsfwjs model)', () => {
 
   it('returns IMAGE_DECODE_FAILED for corrupt (non-image) bytes', async () => {
     const result = await classifier.classify(Buffer.from('this is definitely not an image'));
+    expect(result).toEqual({ ok: false, code: 'IMAGE_DECODE_FAILED' });
+  });
+
+  it('returns IMAGE_DECODE_FAILED for a PNG with wrong dimensions', async () => {
+    const png = encodeRgbPng(100, 100, [119, 119, 119]);
+    const result = await classifier.classify(png);
     expect(result).toEqual({ ok: false, code: 'IMAGE_DECODE_FAILED' });
   });
 });
