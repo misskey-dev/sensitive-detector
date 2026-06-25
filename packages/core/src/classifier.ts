@@ -1,5 +1,4 @@
 import { join } from 'node:path';
-import { InferenceSession, Tensor } from 'onnxruntime-node';
 import { PNG } from 'pngjs';
 import type { DetectErrorCode, Prediction } from './types.js';
 
@@ -17,6 +16,40 @@ const noopLogger: CoreLogger = {
   warn: () => undefined,
   error: () => undefined,
 };
+
+// --- 実依存（onnxruntime-node）の最小構造型 ---
+// テストでは fake を注入できる。
+
+type OnnxSession = {
+  run(feeds: Record<string, unknown>): Promise<Record<string, { data: Float32Array } | undefined>>;
+};
+
+type OnnxSessionOptions = {
+  intraOpNumThreads?: number;
+};
+
+type OnnxInferenceSession = {
+  create(path: string, options?: OnnxSessionOptions): Promise<OnnxSession>;
+};
+
+type OnnxTensorCtor = new (type: string, data: Float32Array, dims: number[]) => unknown;
+
+type OnnxModule = {
+  InferenceSession: OnnxInferenceSession;
+  Tensor: OnnxTensorCtor;
+};
+
+const defaultLoadOnnx = async (): Promise<OnnxModule> =>
+  (await import('onnxruntime-node')) as unknown as OnnxModule;
+
+/**
+ * ONNX Runtime を実行できる CPU/アーキテクチャかを判定する（参照: Misskey本体バックエンドのAiService.ts）。
+ */
+export async function computeIsSupportedCpu(
+  arch: string = process.arch,
+): Promise<boolean> {
+  return arch === 'x64' || arch === 'arm64';
+}
 
 /** モデル入力サイズ（InceptionV3）。 */
 const MODEL_SIZE = 299;
@@ -63,6 +96,8 @@ export interface Classifier {
 }
 
 export type ClassifierDeps = {
+  arch?: string;
+  loadOnnx?: () => Promise<OnnxModule>;
   logger?: CoreLogger;
   intraOpNumThreads?: number;
 };
@@ -74,7 +109,7 @@ function unavailableClassifier(): Classifier {
   };
 }
 
-function readyClassifier(session: InferenceSession): Classifier {
+function readyClassifier(session: OnnxSession, TensorCtor: OnnxTensorCtor): Classifier {
   return {
     available: true,
     classify: async (buffer: Buffer): Promise<ClassifyResult> => {
@@ -83,7 +118,7 @@ function readyClassifier(session: InferenceSession): Classifier {
         return { ok: false, code: 'IMAGE_DECODE_FAILED' };
       }
       try {
-        const inputTensor = new Tensor('float32', float32, [1, MODEL_SIZE, MODEL_SIZE, 3]);
+        const inputTensor = new TensorCtor('float32', float32, [1, MODEL_SIZE, MODEL_SIZE, 3]);
         const results = await session.run({ [INPUT_NAME]: inputTensor });
         const output = results[OUTPUT_NAME];
         if (!output) {
@@ -112,15 +147,26 @@ function readyClassifier(session: InferenceSession): Classifier {
 export async function createClassifier(modelDir: string, deps: ClassifierDeps = {}): Promise<Classifier> {
   const logger = deps.logger ?? noopLogger;
 
+  const supported = await computeIsSupportedCpu(deps.arch);
+  if (!supported) {
+    logger.error(
+      'ONNX Runtime is not supported on this CPU/architecture; /v1/detect-image will always return MODEL_UNAVAILABLE.',
+    );
+    return unavailableClassifier();
+  }
+
   try {
+    const loadOnnx = deps.loadOnnx ?? defaultLoadOnnx;
+    const { InferenceSession, Tensor } = await loadOnnx();
+
     const modelPath = join(modelDir, 'nsfw_model.onnx');
-    const sessionOptions: InferenceSession.SessionOptions = {};
+    const sessionOptions: OnnxSessionOptions = {};
     if (deps.intraOpNumThreads !== undefined && deps.intraOpNumThreads > 0) {
       sessionOptions.intraOpNumThreads = deps.intraOpNumThreads;
     }
     const session = await InferenceSession.create(modelPath, sessionOptions);
     logger.info('ONNX model loaded successfully.');
-    return readyClassifier(session);
+    return readyClassifier(session, Tensor);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`Failed to load ONNX model: ${message}`);
