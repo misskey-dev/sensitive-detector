@@ -19,11 +19,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@tensorflow/tfjs-node": "catalog:",
-    "nsfwjs": "catalog:",
-    "systeminformation": "catalog:"
+    "onnxruntime-node": "catalog:",
+    "pngjs": "catalog:"
   },
   "devDependencies": {
-    "@tensorflow/tfjs": "catalog:"
+    "@types/pngjs": "catalog:"
   }
 }

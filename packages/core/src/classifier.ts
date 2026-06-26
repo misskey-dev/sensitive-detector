@@ -1,6 +1,6 @@
-import { pathToFileURL } from 'node:url';
-import type { PredictionType } from 'nsfwjs/core';
-import type { DetectErrorCode } from './types.js';
+import { join } from 'node:path';
+import { PNG } from 'pngjs';
+import type { DetectErrorCode, Prediction } from './types.js';
 
 /**
  * core が利用する最小ロガー。server の pino Logger は構造的にこの型へ代入できる。
@@ -17,67 +17,73 @@ const noopLogger: CoreLogger = {
   error: () => undefined,
 };
 
-// --- 実依存（tfjs-node / nsfwjs / systeminformation）の最小構造型 ---
-// 実モジュールはこれらへ `as unknown as` でキャストして代入する。テストでは fake を注入できる。
+// --- 実依存（onnxruntime-node）の最小構造型 ---
+// テストでは fake を注入できる。
 
-type DecodedImage = { dispose: () => void };
-
-type TfNodeModule = {
-  env: () => { global: Record<string, unknown> };
-  node: {
-    decodeImage: (bytes: Uint8Array, channels?: number, dtype?: string, expandAnimations?: boolean) => DecodedImage;
-  };
+type OnnxSession = {
+  run(feeds: Record<string, unknown>): Promise<Record<string, { data: Float32Array } | undefined>>;
 };
 
-type NsfwModel = {
-  classify: (image: unknown) => Promise<PredictionType[]>;
+type OnnxSessionOptions = {
+  intraOpNumThreads?: number;
 };
 
-type NsfwModule = {
-  load: (modelUrl: string, options?: { size?: number }) => Promise<NsfwModel>;
+type OnnxInferenceSession = {
+  create(path: string, options?: OnnxSessionOptions): Promise<OnnxSession>;
 };
 
-const REQUIRED_CPU_FLAGS_X64 = ['avx2', 'fma'] as const;
+type OnnxTensorCtor = new (type: string, data: Float32Array, dims: number[]) => unknown;
 
-const defaultLoadCpuFlags = async (): Promise<string[]> => {
-  const si = await import('systeminformation');
-  const flags = await si.cpuFlags();
-  return flags.split(/\s+/).filter((flag) => flag.length > 0);
+type OnnxModule = {
+  InferenceSession: OnnxInferenceSession;
+  Tensor: OnnxTensorCtor;
 };
 
-const defaultLoadTfNode = async (): Promise<TfNodeModule> =>
-  (await import('@tensorflow/tfjs-node')) as unknown as TfNodeModule;
-
-const defaultLoadNsfw = async (): Promise<NsfwModule> => (await import('nsfwjs/core')) as unknown as NsfwModule;
+const defaultLoadOnnx = async (): Promise<OnnxModule> => (await import('onnxruntime-node')) as unknown as OnnxModule;
 
 /**
- * TensorFlow を実行できる CPU/アーキテクチャかを判定する（参照: Misskey本体バックエンドのAiService.ts）。
- * x64 は avx2 と fma の両方が必要。arm64 は常に対応。それ以外は非対応。
- * CPU フラグの取得に失敗した場合も非対応として扱う（要件: フラグ確認不能 → MODEL_UNAVAILABLE）。
+ * ONNX Runtime を実行できる CPU/アーキテクチャかを判定する（参照: Misskey本体バックエンドのAiService.ts）。
  */
-export async function computeIsSupportedCpu(
-  deps: { arch?: string; loadCpuFlags?: () => Promise<string[]> } = {},
-): Promise<boolean> {
-  const arch = deps.arch ?? process.arch;
-  switch (arch) {
-    case 'x64': {
-      try {
-        const loadCpuFlags = deps.loadCpuFlags ?? defaultLoadCpuFlags;
-        const flags = await loadCpuFlags();
-        return REQUIRED_CPU_FLAGS_X64.every((required) => flags.includes(required));
-      } catch {
-        return false;
-      }
-    }
-    case 'arm64':
-      return true;
-    default:
-      return false;
+export async function computeIsSupportedCpu(arch: string = process.arch): Promise<boolean> {
+  return arch === 'x64' || arch === 'arm64';
+}
+
+/** モデル入力サイズ（InceptionV3）。 */
+const MODEL_SIZE = 299;
+/** nsfwjs 互換の出力クラス名（softmax 出力順）。 */
+const CLASS_NAMES = ['Drawing', 'Hentai', 'Neutral', 'Porn', 'Sexy'] as const;
+/** ONNX モデルの入力テンソル名。 */
+const INPUT_NAME = 'input';
+/** ONNX モデルの出力テンソル名。 */
+const OUTPUT_NAME = 'dense_3';
+
+/**
+ * PNG バイト列をデコードし、299×299 RGB の Float32Array（[0, 1] 正規化済み）を返す。
+ * デコード失敗・サイズ不一致は undefined を返す。
+ */
+function decodePngToFloat32(buffer: Buffer): Float32Array | undefined {
+  let png: PNG;
+  try {
+    png = PNG.sync.read(buffer);
+  } catch {
+    return undefined;
   }
+  if (png.width !== MODEL_SIZE || png.height !== MODEL_SIZE) {
+    return undefined;
+  }
+  // PNG.sync.read は RGBA (4ch) を返す。RGB 3ch に変換しつつ [0, 1] に正規化する。
+  const pixelCount = MODEL_SIZE * MODEL_SIZE;
+  const float32 = new Float32Array(pixelCount * 3);
+  for (let i = 0; i < pixelCount; i++) {
+    float32[i * 3] = (png.data[i * 4] ?? 0) / 255;
+    float32[i * 3 + 1] = (png.data[i * 4 + 1] ?? 0) / 255;
+    float32[i * 3 + 2] = (png.data[i * 4 + 2] ?? 0) / 255;
+  }
+  return float32;
 }
 
 export type ClassifyResult =
-  | { ok: true; predictions: PredictionType[] }
+  | { ok: true; predictions: Prediction[] }
   | { ok: false; code: Extract<DetectErrorCode, 'IMAGE_DECODE_FAILED' | 'DETECTION_FAILED' | 'MODEL_UNAVAILABLE'> };
 
 export interface Classifier {
@@ -88,11 +94,9 @@ export interface Classifier {
 
 export type ClassifierDeps = {
   arch?: string;
-  loadCpuFlags?: () => Promise<string[]>;
-  loadTfNode?: () => Promise<TfNodeModule>;
-  loadNsfw?: () => Promise<NsfwModule>;
-  fetchImpl?: unknown;
+  loadOnnx?: () => Promise<OnnxModule>;
   logger?: CoreLogger;
+  intraOpNumThreads?: number;
 };
 
 function unavailableClassifier(): Classifier {
@@ -102,61 +106,67 @@ function unavailableClassifier(): Classifier {
   };
 }
 
-function readyClassifier(tf: TfNodeModule, model: NsfwModel): Classifier {
+function readyClassifier(session: OnnxSession, TensorCtor: OnnxTensorCtor): Classifier {
   return {
     available: true,
     classify: async (buffer: Buffer): Promise<ClassifyResult> => {
-      let image: DecodedImage;
-      try {
-        // 正規化済みバイトを RGB 3ch でデコードする。GIF は先頭フレームだけにし、frame-count DoS を防ぐ。
-        image = tf.node.decodeImage(buffer, 3, 'int32', false);
-      } catch {
+      const float32 = decodePngToFloat32(buffer);
+      if (float32 === undefined) {
         return { ok: false, code: 'IMAGE_DECODE_FAILED' };
       }
       try {
-        const predictions = await model.classify(image);
+        const inputTensor = new TensorCtor('float32', float32, [1, MODEL_SIZE, MODEL_SIZE, 3]);
+        const results = await session.run({ [INPUT_NAME]: inputTensor });
+        const output = results[OUTPUT_NAME];
+        if (!output) {
+          return { ok: false, code: 'DETECTION_FAILED' };
+        }
+        const data = output.data as Float32Array;
+        const predictions: Prediction[] = CLASS_NAMES.map((className, i) => ({
+          className,
+          probability: data[i] ?? 0,
+        }));
+        // nsfwjs 互換: 確率降順でソートする。
+        predictions.sort((a, b) => b.probability - a.probability);
         return { ok: true, predictions };
       } catch {
         return { ok: false, code: 'DETECTION_FAILED' };
-      } finally {
-        image.dispose(); // Tensor を解放（参照: AiService.ts:63）。
       }
     },
   };
 }
 
 /**
- * 起動時に 1 回だけモデルをロードする（参照実装の遅延ロードとは異なり Mutex 不要）。
- * CPU 非対応・import 失敗・load 失敗はいずれも `MODEL_UNAVAILABLE` を返す classifier を返し、
+ * 起動時に 1 回だけ ONNX モデルをロードする。
+ * import 失敗・load 失敗はいずれも `MODEL_UNAVAILABLE` を返す classifier を返し、
  * 再試行しない（要件: 早期検出方針）。
  */
 export async function createClassifier(modelDir: string, deps: ClassifierDeps = {}): Promise<Classifier> {
   const logger = deps.logger ?? noopLogger;
 
-  const supported = await computeIsSupportedCpu({ arch: deps.arch, loadCpuFlags: deps.loadCpuFlags });
+  const supported = await computeIsSupportedCpu(deps.arch);
   if (!supported) {
     logger.error(
-      'TensorFlow is not supported on this CPU/architecture; /v1/detect-image will always return MODEL_UNAVAILABLE.',
+      'ONNX Runtime is not supported on this CPU/architecture; /v1/detect-image will always return MODEL_UNAVAILABLE.',
     );
     return unavailableClassifier();
   }
 
   try {
-    const loadTfNode = deps.loadTfNode ?? defaultLoadTfNode;
-    const loadNsfw = deps.loadNsfw ?? defaultLoadNsfw;
+    const loadOnnx = deps.loadOnnx ?? defaultLoadOnnx;
+    const { InferenceSession, Tensor } = await loadOnnx();
 
-    const tf = await loadTfNode();
-    // TensorFlow の fetch を Node の global fetch に差し替える（参照: AiService.ts:47）。
-    tf.env().global.fetch = deps.fetchImpl ?? globalThis.fetch;
-
-    const nsfw = await loadNsfw();
-    const model = await nsfw.load(pathToFileURL(modelDir).toString(), { size: 299 });
-
-    logger.info('nsfwjs model loaded successfully.');
-    return readyClassifier(tf, model);
+    const modelPath = join(modelDir, 'nsfw_model.onnx');
+    const sessionOptions: OnnxSessionOptions = {};
+    if (deps.intraOpNumThreads !== undefined && deps.intraOpNumThreads > 0) {
+      sessionOptions.intraOpNumThreads = deps.intraOpNumThreads;
+    }
+    const session = await InferenceSession.create(modelPath, sessionOptions);
+    logger.info('ONNX model loaded successfully.');
+    return readyClassifier(session, Tensor);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger.error(`Failed to load nsfwjs model: ${message}`);
+    logger.error(`Failed to load ONNX model: ${message}`);
     return unavailableClassifier();
   }
 }

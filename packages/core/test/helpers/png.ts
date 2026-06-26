@@ -1,7 +1,7 @@
 import { deflateSync } from 'node:zlib';
 
 // sharp 等に依存せず、テスト用の正規化済み PNG（フィルタ none・RGB 8bit・非インターレース）を生成する。
-// nsfwjs が想定する「Misskey 側で 299x299 リサイズ＋透過塗りつぶし済み」の入力を模す。
+// ONNX モデルが想定する「Misskey 側で 299x299 リサイズ＋透過塗りつぶし済み」の入力を模す。
 
 const crcTable: Uint32Array = (() => {
   const table = new Uint32Array(256);

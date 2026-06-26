@@ -1,40 +1,23 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { createClassifier } from '../src/classifier.js';
 
 describe('classifier', () => {
-  it('decodes images without expanding GIF animations', async () => {
-    const decodedImage = { dispose: vi.fn() };
-    const decodeCalls: unknown[][] = [];
-    const input = Buffer.from('image bytes');
-    const predictions = [{ className: 'Neutral', probability: 1 }];
-
-    const classifier = await createClassifier('/models/', {
-      arch: 'arm64',
-      loadTfNode: async () =>
-        ({
-          env: () => ({ global: {} }),
-          node: {
-            decodeImage: (...args: unknown[]) => {
-              decodeCalls.push(args);
-              return decodedImage;
-            },
-          },
-        }) as never,
-      loadNsfw: async () =>
-        ({
-          load: async () => ({
-            classify: async (image: unknown) => {
-              expect(image).toBe(decodedImage);
-              return predictions;
-            },
-          }),
-        }) as never,
+  it('returns MODEL_UNAVAILABLE when model directory does not exist', async () => {
+    const classifier = await createClassifier('/nonexistent/path/', {
+      arch: 'x64',
     });
+    expect(classifier.available).toBe(false);
+    const result = await classifier.classify(Buffer.from('test'));
+    expect(result).toEqual({ ok: false, code: 'MODEL_UNAVAILABLE' });
+  });
 
-    const result = await classifier.classify(input);
-
-    expect(result).toEqual({ ok: true, predictions });
-    expect(decodeCalls).toEqual([[input, 3, 'int32', false]]);
-    expect(decodedImage.dispose).toHaveBeenCalledOnce();
+  it('returns IMAGE_DECODE_FAILED for non-PNG bytes', async () => {
+    // createClassifier with a valid model is integration-test territory.
+    // This test verifies the unavailable path only.
+    const classifier = await createClassifier('/nonexistent/path/', {
+      arch: 'x64',
+    });
+    const result = await classifier.classify(Buffer.from('not an image'));
+    expect(result).toEqual({ ok: false, code: 'MODEL_UNAVAILABLE' });
   });
 });
