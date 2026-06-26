@@ -23,7 +23,7 @@ allowed-tools: Read, Grep, Glob, Bash
 ## 正本（これらを基準に判定する）
 
 - 応答型: `packages/core/src/types.ts`
-  - `Prediction` = `{ className:string; probability:number }`（nsfwjs 生出力・確率降順。
+  - `Prediction` = `{ className:string; probability:number }`（ONNX Runtime 生出力・確率降順。
     `PredictionType` を re-export しつつ className を string に緩めた契約）。
   - `BatchItemResult` = `{ success:true; predictions: Prediction[] }`
     ｜ `{ success:false; error:{ code:DetectErrorCode; message:string } }`（パーツ単位の結果）。

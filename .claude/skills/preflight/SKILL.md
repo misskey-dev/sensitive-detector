@@ -14,9 +14,10 @@ allowed-tools: Bash, Read
 2. `pnpm run lint`             — `biome check .`。
 3. `pnpm run test:unit`        — 純粋ロジック。
 4. `pnpm run test:integration` — 実モデルロード＋実 classify。
-   **CPU が avx2+fma 非対応 or モデル不在なら自動 skip** される（その場合は「skip」と明示し、緑とは区別する）。
+   **モデル不在なら自動 skip** される（その場合は「skip」と明示し、緑とは区別する）。
+   CPU/arch 非対応（x64 / arm64 以外）は skip ではなく失敗として扱う。
    モデルは環境変数 `SENSITIVE_DETECTOR_TEST_MODEL_DIR` で上書き可。
-5. `docker build -t sensitive-detector:preflight .` — ネイティブビルド（node-gyp / tfjs-node）が通るか。
+5. `docker build -t sensitive-detector:preflight .` — ネイティブ依存（onnxruntime-node）の install/build が通るか。
    **イメージの push はしない**（レジストリ publish は予定なし）。一番遅いステップなので最後に置く。
 
 ## 報告フォーマット
