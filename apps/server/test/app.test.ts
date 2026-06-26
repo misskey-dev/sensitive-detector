@@ -86,13 +86,14 @@ describe('POST /v1/detect-images', () => {
     expect(results[2]?.error?.code).toBe('UNSUPPORTED_MEDIA_TYPE');
   });
 
-  it('accepts image/jpeg, image/gif, image/bmp', async () => {
+  it('rejects image/jpeg, image/gif, image/bmp with UNSUPPORTED_MEDIA_TYPE', async () => {
     const app = buildTestApp();
     for (const contentType of ['image/jpeg', 'image/gif', 'image/bmp']) {
       const res = await postImages(app, [{ data: png, contentType }]);
       expect(res.status).toBe(200);
-      const body = (await res.json()) as { result: { results: { success: boolean }[] } };
-      expect(body.result.results[0]?.success).toBe(true);
+      const body = (await res.json()) as { result: { results: { success: boolean; error?: { code: string } }[] } };
+      expect(body.result.results[0]?.success).toBe(false);
+      expect(body.result.results[0]?.error?.code).toBe('UNSUPPORTED_MEDIA_TYPE');
     }
   });
 

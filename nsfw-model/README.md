@@ -28,6 +28,41 @@ Misskey commit from which they were copied was not recorded at the time of impor
 > [upstream LICENSE.md](https://github.com/GantMan/nsfw_model/blob/master/LICENSE.md)
 > for details.
 
+## ONNX Conversion
+
+`nsfw_model.onnx` is converted from the TensorFlow.js model files in this directory.
+The conversion was verified on an M2 MacBook Air (macOS, ARM64).
+
+### Prerequisites
+
+- Docker
+
+### Steps
+
+Run the following command from the `nsfw-model/` directory:
+
+```sh
+docker run --rm -v $(pwd):/model python:3.11-slim bash -c "pip install tensorflow==2.15.1 tensorflowjs==4.22.0 tf2onnx onnx==1.16.2 setuptools==75.8.2 && python3 -c \"
+import types, sys
+# Mock tensorflow_decision_forests to avoid inference.so error
+mod = types.ModuleType('tensorflow_decision_forests')
+mod.keras = types.ModuleType('tensorflow_decision_forests.keras')
+sys.modules['tensorflow_decision_forests'] = mod
+sys.modules['tensorflow_decision_forests.keras'] = mod.keras
+
+import tensorflowjs as tfjs
+import tensorflow as tf
+import tf2onnx
+model = tfjs.converters.load_keras_model('/model/model.json')
+input_spec = (tf.TensorSpec((1, 299, 299, 3), tf.float32, name='input'),)
+tf2onnx.convert.from_keras(model, input_signature=input_spec, output_path='/model/nsfw_model.onnx')
+print('ONNX model saved successfully')
+\""
+```
+
+This produces `nsfw_model.onnx` with input shape `[1, 299, 299, 3]` (float32) and
+output shape `[1, 5]` (softmax probabilities for Drawing, Hentai, Neutral, Porn, Sexy).
+
 ## License Notices
 
 ### GantMan/nsfw_model

@@ -6,9 +6,9 @@ user-invocable: false
 
 # scope-guard — sensitive-detector のスコープ判断と不変条件
 
-このサービスは Misskey の `AiService.detectSensitive`（nsfwjs + @tensorflow/tfjs-node 推論）を
+このサービスは Misskey の `AiService.detectSensitive`（ONNX Runtime 推論）を
 HTTP サイドカーに切り出したもの。切り出して嬉しいのは **ネイティブ ML スタック
-（tfjs-node / libtensorflow、モデルのメモリ常駐、x64 avx2+fma 制約、glibc 依存）の隔離** だけ。
+（onnxruntime-node、モデルのメモリ常駐、glibc 依存）の隔離** だけ。
 
 ## 機能を足してよいかの判断軸（エンドポイント数は不変条件ではない）
 
@@ -25,11 +25,11 @@ HTTP サイドカーに切り出したもの。切り出して嬉しいのは **
 
 - 返すのは **推論の生予測値だけ**。`sensitive` / `porn` のしきい値判定・フレーム集約・
   per-user ポリシーは **Misskey 本体（`FileInfoService.ts` の `judgePrediction`）に残す**。ここには入れない。
-- 受け取るのは **正規化済み画像バイト**。画像正規化（sharp の resize/rotate/flatten/PNG 変換）と
-  動画・APNG のフレーム抽出（ffmpeg）は本体に残す。**v1 では sharp / fluent-ffmpeg / ffmpeg を依存に足さない。**
+- 受け取るのは **299×299 の正規化済み PNG**。画像正規化（sharp の resize/rotate/flatten/PNG 変換）と
+  動画・APNG のフレーム抽出（ffmpeg）は本体に残す。**sharp / fluent-ffmpeg / ffmpeg を依存に足さない。**
 - **物理パス入力・mediaDir・ディレクトリトラバーサル防御・JSON 入力スキーマ** は持ち込まない
   （入力は画像バイナリ本体）。
-- 予測値の形は nsfwjs の生出力（全クラス・確率降順）。`predictions[].className` は本体が
+- 予測値の形は ONNX モデルの生出力（全クラス・確率降順）。`predictions[].className` は本体が
   `find(x => x.className === 'Sexy')` で引ける契約（[packages/core/src/types.ts](../../../packages/core/src/types.ts) の `Prediction`）。
 - **HTTP 応答はバッチ形**。成功は `{ success:true, result:{ results: BatchItemResult[] } }`
   （パーツ順保持）。`BatchItemResult` はパーツ毎に `{ success:true, predictions }` か

@@ -160,7 +160,8 @@ export async function bootstrap(argv: readonly string[], basedir = process.cwd()
   warnConfigCoherence(raw, config, logger);
 
   // 起動時に 1 回だけモデルをロードする（失敗しても常駐し続ける）。
-  const classifier = await createClassifier(config.modelDir, { logger });
+  const intraOpNumThreads = parseInt(process.env.SENSITIVE_DETECTOR_THREADS ?? '1', 10) || undefined;
+  const classifier = await createClassifier(config.modelDir, { logger, intraOpNumThreads });
   if (!classifier.available) {
     logger.warn('model is unavailable; every /v1/detect-image request will return MODEL_UNAVAILABLE (503)');
   }
