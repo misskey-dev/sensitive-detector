@@ -39,15 +39,12 @@ type OnnxModule = {
   Tensor: OnnxTensorCtor;
 };
 
-const defaultLoadOnnx = async (): Promise<OnnxModule> =>
-  (await import('onnxruntime-node')) as unknown as OnnxModule;
+const defaultLoadOnnx = async (): Promise<OnnxModule> => (await import('onnxruntime-node')) as unknown as OnnxModule;
 
 /**
  * ONNX Runtime を実行できる CPU/アーキテクチャかを判定する（参照: Misskey本体バックエンドのAiService.ts）。
  */
-export async function computeIsSupportedCpu(
-  arch: string = process.arch,
-): Promise<boolean> {
+export async function computeIsSupportedCpu(arch: string = process.arch): Promise<boolean> {
   return arch === 'x64' || arch === 'arm64';
 }
 
