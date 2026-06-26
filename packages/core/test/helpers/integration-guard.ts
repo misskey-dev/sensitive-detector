@@ -1,7 +1,6 @@
 import { existsSync } from 'node:fs';
 
-const rawModelDir =
-  process.env.SENSITIVE_DETECTOR_TEST_MODEL_DIR ?? '/home/osamu/develop/misskey/packages/backend/nsfw-model';
+const rawModelDir = process.env.SENSITIVE_DETECTOR_TEST_MODEL_DIR ?? './nsfw-model';
 
 // createClassifier に渡す modelDir は末尾スラッシュ正規化済みであること（config.ts と同じ規約）。
 export const TEST_MODEL_DIR = rawModelDir.endsWith('/') ? rawModelDir : `${rawModelDir}/`;

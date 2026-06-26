@@ -91,7 +91,7 @@ pnpm --filter @misskey-sensitive-detector/server dev -- --config ./config.dev.mj
 ```
 
 統合テストは `SENSITIVE_DETECTOR_TEST_MODEL_DIR` でモデルディレクトリを上書きできる
-（既定: `/home/osamu/develop/misskey/packages/backend/nsfw-model`）。モデルが無い環境では自動的に skip する。
+（既定: `./nsfw-model`）。モデルが無い環境では自動的に skip する。
 
 ## 構成
 
