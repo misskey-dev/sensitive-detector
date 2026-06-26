@@ -40,7 +40,7 @@ services:
       retries: 3
 
     # --- リソース制限 ---
-    # tfjs-node がモデルをメモリ常駐させ、推論時に CPU を使う。環境に合わせて調整する。
+    # onnxruntime-node がモデルをメモリ常駐させ、推論時に CPU を使う。環境に合わせて調整する。
     deploy:
       resources:
         limits:
