@@ -1,6 +1,6 @@
 ---
 name: native-deps-guard
-description: tfjs-node / nsfwjs / Node / Docker ベースイメージなどネイティブ ML スタック依存を上げる前に、N-API v8・avx2+fma・glibc・Node22 固定との整合を確認する。依存のバージョンを上げる時に使う。
+description: onnxruntime-node / Node / Docker ベースイメージなどネイティブ ML スタック依存を上げる前に、glibc・Docker runtime の Node22 との整合を確認する。依存のバージョンを上げる時に使う。
 disable-model-invocation: true
 allowed-tools: Read, Grep, Bash, WebFetch
 ---
@@ -13,31 +13,30 @@ allowed-tools: Read, Grep, Bash, WebFetch
 
 ## 固定されている制約（根拠）
 
-- **Node 22 系に固定**。`@tensorflow/tfjs-node@4.22.0` の配布バイナリは N-API v8 まで前提で、
-  Node 24+ のビルド/実行互換は未保証（[Dockerfile](../../../Dockerfile) 冒頭コメント /
-  ルート [package.json](../../../package.json) の `engines.node >= 22`）。
-- **x64 avx2+fma 必須・glibc 依存**（libtensorflow バイナリの制約）。Alpine(musl) は不可、
+- **Docker/runtime は Node 22 系**。Dockerfile のベースイメージは `node:22-bookworm-slim`。
+  ルート [package.json](../../../package.json) の `engines.node` は `>=22` なので、
+  ローカル実行の上限は固定していない。
+- **glibc 依存**（`onnxruntime-node` のネイティブバイナリの制約）。Alpine(musl) は不可、
   ベースは `node:22-bookworm-slim`（glibc 2.36）。
 - バージョンは **[pnpm-workspace.yaml](../../../pnpm-workspace.yaml) の catalog 1 箇所**で集中管理。
-  `@tensorflow/tfjs` と `@tensorflow/tfjs-node` は **必ず同じ版に揃える**。
-- ネイティブビルド許可は同ファイルの `onlyBuiltDependencies` にある
-  （`@tensorflow/tfjs-node` を外すとビルドが走らない）。
+- ネイティブビルド許可は同ファイルの `onlyBuiltDependencies` と `allowBuilds` に `onnxruntime-node` を記載。
+  これを外すとネイティブ依存の install/build スクリプトが走らず実行時エラーになる。
 
 ## 手順
 
 1. 現状把握: `pnpm-workspace.yaml`(catalog)・各 `package.json`・`Dockerfile` を読む。
-2. 上げたい依存の **リリースノート / CHANGELOG / peerDependencies** を WebFetch で確認する:
-   - **tfjs-node**: N-API ターゲット、対応 Node、libtensorflow の版と CPU 命令要件。
-   - **nsfwjs**: 要求する `@tensorflow/tfjs(-node)` の版（tfjs と歩調を合わせる）。
-   - **Node engines / Docker ベース**: tfjs-node が対応する Node 範囲を出ない glibc イメージか。
+2. 上げたい依存の **リリースノート / CHANGELOG** を WebFetch で確認する:
+   - **onnxruntime-node**: 対応 Node バージョン、glibc の最低要件、CPU 命令セット要件の変化。
+   - **Node engines / Docker ベース**: Docker runtime の Node 22 とローカル engines `>=22` の範囲で動くか。
 3. 判定観点:
-   - N-API/Node 互換は壊れないか（Node 24+ は tfjs-node が N-API v9+ バイナリを配布してから）。
-   - avx2+fma / glibc 前提を崩していないか。
-   - tfjs と tfjs-node の版が一致しているか。
+   - Docker runtime の Node 22 との互換は壊れないか。
+   - engines `>=22` のままで問題ないか（上限が必要な依存に変わっていないか）。
+   - glibc 前提（bookworm-slim = 2.36）を崩していないか。
+   - `onlyBuiltDependencies` / `allowBuilds` への追記が必要な新たなネイティブ依存が増えていないか。
 4. **報告**: 各依存を `✅ 上げてOK / ⚠️ 条件付き / ❌ 非推奨` ＋ 一行根拠 ＋
    実施するなら「catalog のどの行をどう変える / 何を検証する」まで。
 
 ## 上げた後の検証（案内のみ。実行は `/preflight`）
 
 `pnpm install` → `pnpm run build` → `pnpm run test:integration`
-（CPU が avx2+fma 非対応 or モデル不在なら統合テストは skip される）→ `docker build .`。
+（モデル不在なら統合テストは skip される）→ `docker build .`。
