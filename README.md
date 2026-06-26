@@ -10,7 +10,8 @@ Misskey 本体の `AiService.detectSensitive`（[nsfwjs](https://github.com/infi
 
 ### `POST /v1/detect-images`
 
-複数の正規化済み画像を一括推論する。
+複数の正規化済み画像を一括推論する。詳しい入出力仕様、型、エラー、実装例は
+[docs/api-detect-images.md](docs/api-detect-images.md) を参照。
 
 | | |
 | --- | --- |
@@ -25,26 +26,35 @@ Misskey 本体の `AiService.detectSensitive`（[nsfwjs](https://github.com/infi
   "success": true,
   "result": {
     "results": [
-      { "success": true, "predictions": [{ "className": "Neutral", "probability": 0.98 }, "..."] },
-      { "success": false, "error": { "code": "IMAGE_DECODE_FAILED", "message": "..." } }
+      {
+        "success": true,
+        "predictions": [{ "className": "Neutral", "probability": 0.98 }]
+      },
+      {
+        "success": false,
+        "error": { "code": "IMAGE_DECODE_FAILED", "message": "..." }
+      }
     ]
   }
 }
 ```
 
 `results` の順序はリクエストパーツの順序と一致する。1 枚でも失敗しても全体は 200 を返す（部分成功）。
-各パーツのサイズ上限は `maxBinarySize` を個別適用。
+成功パートの `predictions` は推論モデルの生出力で、サービス側ではしきい値判定をしない。
+各パーツのサイズ上限は `maxBinarySize` を個別適用する。
 
-失敗（4xx）はリクエスト全体に問題がある場合のみ:
+全体失敗（4xx/5xx）はリクエスト全体に問題がある場合のみ:
 
 | code | status | 意味 |
 | --- | --- | --- |
 | `AUTHENTICATION_REQUIRED` | 401 | トークン欠落 / 不一致 |
 | `INVALID_REQUEST` | 400 | パーツなし / multipart パース失敗 |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | Content-Type が `multipart/form-data` 以外 |
-| `REQUEST_TOO_LARGE` | 413 | `Content-Length` が `maxBodySize` 超過、パーツ数が `maxParts` 超過、または画像 dimensions が上限超過 |
+| `REQUEST_TOO_LARGE` | 413 | リクエストボディが `maxBodySize` 超過、またはパーツ数が `maxParts` 超過 |
+| `DETECTION_FAILED` | 500 | リクエスト処理パイプラインの想定外エラー |
 
-パーツ個別の失敗（`IMAGE_DECODE_FAILED`、`REQUEST_TOO_LARGE` 等）は `results[i].error.code` に入り、HTTP は 200。
+パーツ個別の失敗（画像 dimensions 上限超過による `REQUEST_TOO_LARGE`、`IMAGE_DECODE_FAILED` 等）は
+`results[i].error.code` に入り、HTTP は 200。
 
 動作確認:
 
