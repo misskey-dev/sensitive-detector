@@ -12,7 +12,7 @@ catalog:
   '@hono/node-server': 2.0.10
   '@types/node': 22.19.21
   '@types/pngjs': 6.0.5
-  hono: 4.12.27
+  hono: 4.12.34
   onnxruntime-node: 1.27.0
   pino: 10.3.1
   pino-pretty: 13.1.3
