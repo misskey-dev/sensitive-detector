@@ -20,7 +20,7 @@ catalog:
   tsdown: 0.22.12
   tsx: 4.22.4
   typescript: 6.0.3
-  vitest: 4.1.9
+  vitest: 4.1.11
 
 # onnxruntime-node はプラットフォーム別のネイティブバイナリを含む。
 # pnpm 10 はデフォルトで依存のビルドスクリプトを実行しないため、明示的に許可する。
