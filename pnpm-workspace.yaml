@@ -8,12 +8,15 @@ allowBuilds:
   onnxruntime-node: true
 
 catalog:
-  '@biomejs/biome': 2.5.15
   '@hono/node-server': 2.1.4
+  '@misskey-dev/oxlint-fmt-config': 0.1.1
+  '@stylistic/eslint-plugin': 5.10.0
   '@types/node': 26.6.5
   '@types/pngjs': 6.0.5
   hono: 4.13.13
   onnxruntime-node: 1.30.0
+  oxlint: 1.87.0
+  oxlint-tsgolint: 7.0.2003
   pino: 10.4.0
   pino-pretty: 13.2.0
   pngjs: 7.0.0
