@@ -82,7 +82,7 @@ curl -X POST localhost:3000/v1/detect-images \
 pnpm install
 pnpm run build          # tsdown（高速 JS 出力。依存は external）
 pnpm run typecheck      # core を build してから各 package を型チェック
-pnpm run lint           # biome
+pnpm run lint           # oxlint（stylistic 含む）。自動修正は pnpm run lint:fix
 pnpm run test:unit      # 純粋ロジック
 pnpm run test:integration  # 実モデルロード＋実 classify（モデルが無ければ skip）
 

@@ -1,16 +1,16 @@
 #!/usr/bin/env node
-// PostToolUse(Edit|Write) hook: 編集されたファイルを Biome で整形＋import 整理する（非ブロッキング）。
+// PostToolUse(Edit|Write) hook: 編集されたファイルに oxlint --fix（stylistic 含む）を適用する（非ブロッキング）。
 import { execFileSync } from 'node:child_process';
 
 const projectDir = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
 
 const file = await readFilePath();
-if (!file || !/\.(tsx?|jsx?|mjs|cjs|jsonc?)$/.test(file)) {
+if (!file || !/\.(tsx?|jsx?|mjs|cjs)$/.test(file)) {
   process.exit(0);
 }
 
 try {
-  execFileSync('pnpm', ['exec', 'biome', 'check', '--write', file], {
+  execFileSync('pnpm', ['exec', 'oxlint', '--fix', file], {
     cwd: projectDir,
     stdio: 'ignore',
   });

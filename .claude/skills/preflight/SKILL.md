@@ -11,7 +11,7 @@ allowed-tools: Bash, Read
 「どこが緑/赤か」を一覧にする。すべて緑なら「PR 可」と明言する。
 
 1. `pnpm run typecheck`        — core を build してから各 package を `tsc --noEmit`。
-2. `pnpm run lint`             — `biome check .`。
+2. `pnpm run lint`             — `oxlint`（type-aware + stylistic）。
 3. `pnpm run test:unit`        — 純粋ロジック。
 4. `pnpm run test:integration` — 実モデルロード＋実 classify。
    **モデル不在なら自動 skip** される（その場合は「skip」と明示し、緑とは区別する）。

@@ -16,12 +16,15 @@
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
     "test:integration": "vitest run --project integration",
-    "lint": "pnpm exec -- biome check .",
-    "format": "pnpm exec -- biome format --write ."
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix"
   },
   "devDependencies": {
-    "@biomejs/biome": "catalog:",
+    "@misskey-dev/oxlint-fmt-config": "catalog:",
+    "@stylistic/eslint-plugin": "catalog:",
     "@types/node": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "tsdown": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
