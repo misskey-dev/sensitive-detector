@@ -15,25 +15,25 @@ export type DetectErrorCode =
  * className を `string` に緩めて「Misskey が任意のクラス名を find できる」契約を表す。
  */
 export type Prediction = {
-  className: string;
-  probability: number;
+	className: string;
+	probability: number;
 };
 
 export type DetectImageSuccessResult = {
-  success: true;
-  result: {
-    // 全クラスの生出力（確率降順）をそのまま返す。
-    predictions: Prediction[];
-  };
+	success: true;
+	result: {
+		// 全クラスの生出力（確率降順）をそのまま返す。
+		predictions: Prediction[];
+	};
 };
 
 export type DetectFailedResult = {
-  success: false;
-  error: {
-    code: DetectErrorCode;
-    // 人間向けの診断テキスト。API 契約上の意味は持たない（呼び出し元はコードのみで分岐する）。
-    message: string;
-  };
+	success: false;
+	error: {
+		code: DetectErrorCode;
+		// 人間向けの診断テキスト。API 契約上の意味は持たない（呼び出し元はコードのみで分岐する）。
+		message: string;
+	};
 };
 
 export type DetectImageResult = DetectImageSuccessResult | DetectFailedResult;

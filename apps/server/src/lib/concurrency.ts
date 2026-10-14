@@ -9,28 +9,28 @@
  * 無駄な処理を始めない（実行中の `fn` は中断できないので走り切る）。`fn` を total に保てば reject しない。
  */
 export async function mapWithConcurrency<T, R>(
-  items: readonly T[],
-  limit: number,
-  fn: (item: T, index: number) => Promise<R>,
+	items: readonly T[],
+	limit: number,
+	fn: (item: T, index: number) => Promise<R>,
 ): Promise<R[]> {
-  const results = new Array<R>(items.length);
-  let cursor = 0;
-  let failed = false;
+	const results = Array.from<R>({ length: items.length });
+	let cursor = 0;
+	let failed = false;
 
-  const worker = async (): Promise<void> => {
-    while (!failed && cursor < items.length) {
-      const index = cursor;
-      cursor += 1;
-      try {
-        results[index] = await fn(items[index] as T, index);
-      } catch (err) {
-        failed = true; // 他 worker に後続 item の取得を止めさせ、最初のエラーを伝播する。
-        throw err;
-      }
-    }
-  };
+	const worker = async (): Promise<void> => {
+		while (!failed && cursor < items.length) {
+			const index = cursor;
+			cursor += 1;
+			try {
+				results[index] = await fn(items[index] as T, index);
+			} catch (err) {
+				failed = true; // 他 worker に後続 item の取得を止めさせ、最初のエラーを伝播する。
+				throw err;
+			}
+		}
+	};
 
-  const workerCount = Math.max(1, Math.min(limit, items.length));
-  await Promise.all(Array.from({ length: workerCount }, () => worker()));
-  return results;
+	const workerCount = Math.max(1, Math.min(limit, items.length));
+	await Promise.all(Array.from({ length: workerCount }, () => worker()));
+	return results;
 }

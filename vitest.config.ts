@@ -8,29 +8,29 @@ const coreSrc = fileURLToPath(new URL('./packages/core/src/index.ts', import.met
 const alias = { '@misskey-sensitive-detector/core': coreSrc };
 
 export default defineConfig({
-  test: {
-    projects: [
-      {
-        resolve: { alias },
-        test: {
-          name: 'unit',
-          include: ['packages/*/test/**/*.test.ts', 'apps/*/test/**/*.test.ts'],
-          exclude: ['**/*.integration.test.ts', '**/node_modules/**', '**/dist/**'],
-        },
-      },
-      {
-        resolve: { alias },
-        test: {
-          name: 'integration',
-          include: ['packages/*/test/**/*.integration.test.ts', 'apps/*/test/**/*.integration.test.ts'],
-          exclude: ['**/node_modules/**', '**/dist/**'],
-          // onnxruntime-node のネイティブバイナリ安定動作のため、forks プールで直列実行する。
-          pool: 'forks',
-          fileParallelism: false,
-          testTimeout: 120_000,
-          hookTimeout: 120_000,
-        },
-      },
-    ],
-  },
+	test: {
+		projects: [
+			{
+				resolve: { alias },
+				test: {
+					name: 'unit',
+					include: ['packages/*/test/**/*.test.ts', 'apps/*/test/**/*.test.ts'],
+					exclude: ['**/*.integration.test.ts', '**/node_modules/**', '**/dist/**'],
+				},
+			},
+			{
+				resolve: { alias },
+				test: {
+					name: 'integration',
+					include: ['packages/*/test/**/*.integration.test.ts', 'apps/*/test/**/*.integration.test.ts'],
+					exclude: ['**/node_modules/**', '**/dist/**'],
+					// onnxruntime-node のネイティブバイナリ安定動作のため、forks プールで直列実行する。
+					pool: 'forks',
+					fileParallelism: false,
+					testTimeout: 120_000,
+					hookTimeout: 120_000,
+				},
+			},
+		],
+	},
 });

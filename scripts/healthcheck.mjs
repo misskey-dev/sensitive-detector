@@ -11,14 +11,14 @@ const config = (await import(configPath)).default ?? {};
 const connectHost = config.host && config.host !== '0.0.0.0' ? config.host : '127.0.0.1';
 const base = { path: '/health', timeout: 3000 };
 const options = config.socket
-  ? { ...base, socketPath: config.socket }
-  : { ...base, host: connectHost, port: config.port ?? 3009 };
+	? { ...base, socketPath: config.socket }
+	: { ...base, host: connectHost, port: config.port ?? 3009 };
 
 const req = http.get(options, (res) => {
-  process.exit(res.statusCode === 200 ? 0 : 1);
+	process.exit(res.statusCode === 200 ? 0 : 1);
 });
 req.on('error', () => process.exit(1));
 req.on('timeout', () => {
-  req.destroy();
-  process.exit(1);
+	req.destroy();
+	process.exit(1);
 });

@@ -10,5 +10,5 @@ export const TEST_MODEL_DIR = rawModelDir.endsWith('/') ? rawModelDir : `${rawMo
  * モデルが無い環境では describe.skip させる。
  */
 export async function integrationEnabled(): Promise<boolean> {
-  return existsSync(TEST_MODEL_DIR);
+	return existsSync(TEST_MODEL_DIR);
 }
