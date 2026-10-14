@@ -8,43 +8,43 @@ const NSFW_CLASS_NAMES = ['Drawing', 'Hentai', 'Neutral', 'Porn', 'Sexy'];
 const d = (await integrationEnabled()) ? describe : describe.skip;
 
 d('classifier (real ONNX model)', () => {
-  let classifier: Classifier;
+	let classifier: Classifier;
 
-  beforeAll(async () => {
-    // 実モデルをファイルパスでロードする（ORT は file:// URL ではなくパスを受け取る）。
-    classifier = await createClassifier(TEST_MODEL_DIR);
-  });
+	beforeAll(async () => {
+		// 実モデルをファイルパスでロードする（ORT は file:// URL ではなくパスを受け取る）。
+		classifier = await createClassifier(TEST_MODEL_DIR);
+	});
 
-  it('loads the model and reports availability', () => {
-    expect(classifier.available).toBe(true);
-  });
+	it('loads the model and reports availability', () => {
+		expect(classifier.available).toBe(true);
+	});
 
-  it('classifies a normalized 299x299 PNG into the five NSFW classes', async () => {
-    const png = encodeRgbPng(299, 299, [119, 119, 119]);
-    const result = await classifier.classify(png);
+	it('classifies a normalized 299x299 PNG into the five NSFW classes', async () => {
+		const png = encodeRgbPng(299, 299, [119, 119, 119]);
+		const result = await classifier.classify(png);
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) {
-      return;
-    }
-    expect(result.predictions).toHaveLength(5);
-    expect([...result.predictions.map((p) => p.className)].sort()).toEqual(NSFW_CLASS_NAMES);
-    for (const prediction of result.predictions) {
-      expect(prediction.probability).toBeGreaterThanOrEqual(0);
-      expect(prediction.probability).toBeLessThanOrEqual(1);
-    }
-    const sum = result.predictions.reduce((acc, p) => acc + p.probability, 0);
-    expect(sum).toBeCloseTo(1, 1);
-  });
+		expect(result.ok).toBe(true);
+		if (!result.ok) {
+			return;
+		}
+		expect(result.predictions).toHaveLength(5);
+		expect(result.predictions.map((p) => p.className).sort()).toEqual(NSFW_CLASS_NAMES);
+		for (const prediction of result.predictions) {
+			expect(prediction.probability).toBeGreaterThanOrEqual(0);
+			expect(prediction.probability).toBeLessThanOrEqual(1);
+		}
+		const sum = result.predictions.reduce((acc, p) => acc + p.probability, 0);
+		expect(sum).toBeCloseTo(1, 1);
+	});
 
-  it('returns IMAGE_DECODE_FAILED for corrupt (non-image) bytes', async () => {
-    const result = await classifier.classify(Buffer.from('this is definitely not an image'));
-    expect(result).toEqual({ ok: false, code: 'IMAGE_DECODE_FAILED' });
-  });
+	it('returns IMAGE_DECODE_FAILED for corrupt (non-image) bytes', async () => {
+		const result = await classifier.classify(Buffer.from('this is definitely not an image'));
+		expect(result).toEqual({ ok: false, code: 'IMAGE_DECODE_FAILED' });
+	});
 
-  it('returns IMAGE_DECODE_FAILED for a PNG with wrong dimensions', async () => {
-    const png = encodeRgbPng(100, 100, [119, 119, 119]);
-    const result = await classifier.classify(png);
-    expect(result).toEqual({ ok: false, code: 'IMAGE_DECODE_FAILED' });
-  });
+	it('returns IMAGE_DECODE_FAILED for a PNG with wrong dimensions', async () => {
+		const png = encodeRgbPng(100, 100, [119, 119, 119]);
+		const result = await classifier.classify(png);
+		expect(result).toEqual({ ok: false, code: 'IMAGE_DECODE_FAILED' });
+	});
 });

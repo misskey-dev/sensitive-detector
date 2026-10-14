@@ -11,10 +11,10 @@ const VALID_REQUEST_ID = /^[A-Za-z0-9._-]{1,128}$/;
  * サイドカーとして本体側ログと突合できるよう、上流の ID をそのまま引き継ぐ。
  */
 function resolveRequestId(headerValue: string | undefined): string {
-  if (headerValue !== undefined && VALID_REQUEST_ID.test(headerValue)) {
-    return headerValue;
-  }
-  return randomUUID();
+	if (headerValue !== undefined && VALID_REQUEST_ID.test(headerValue)) {
+		return headerValue;
+	}
+	return randomUUID();
 }
 
 /**
@@ -23,20 +23,22 @@ function resolveRequestId(headerValue: string | undefined): string {
  * 推論のタイムアウトは core の detectImage が内部で管理するため、ここでは扱わない。
  */
 export function requestContext(deps: AppDeps) {
-  return createMiddleware<AppEnv>(async (c, next) => {
-    const requestId = resolveRequestId(c.req.header('x-request-id'));
-    c.header('x-request-id', requestId);
-    const clientIp = c.env?.incoming?.socket?.remoteAddress ?? 'unknown';
-    const logger = deps.logger.child({ requestId, clientIp, method: c.req.method, path: c.req.path });
+	return createMiddleware<AppEnv>(async (c, next) => {
+		const requestId = resolveRequestId(c.req.header('x-request-id'));
+		c.header('x-request-id', requestId);
+		// 型上は HttpBindings だが、app.request()（テスト等）経由では c.env が undefined になるため optional chain が必要。
+		// oxlint-disable-next-line typescript/no-unnecessary-condition
+		const clientIp = c.env?.incoming?.socket?.remoteAddress ?? 'unknown';
+		const logger = deps.logger.child({ requestId, clientIp, method: c.req.method, path: c.req.path });
 
-    c.set('requestId', requestId);
-    c.set('clientIp', clientIp);
-    c.set('logger', logger);
+		c.set('requestId', requestId);
+		c.set('clientIp', clientIp);
+		c.set('logger', logger);
 
-    logger.info('request received');
-    const start = performance.now();
-    await next();
-    const durationMs = Math.round(performance.now() - start);
-    logger.info({ status: c.res.status, durationMs }, 'request completed');
-  });
+		logger.info('request received');
+		const start = performance.now();
+		await next();
+		const durationMs = Math.round(performance.now() - start);
+		logger.info({ status: c.res.status, durationMs }, 'request completed');
+	});
 }
