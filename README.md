@@ -85,6 +85,7 @@ pnpm run typecheck      # core を build してから各 package を型チェッ
 pnpm run lint           # biome
 pnpm run test:unit      # 純粋ロジック
 pnpm run test:integration  # 実モデルロード＋実 classify（モデルが無ければ skip）
+pnpm run test:e2e       # ビルド済み server に実画像を送信（事前に pnpm build が必要）
 
 # ローカル起動（config に modelDir を設定）
 pnpm --filter @misskey-sensitive-detector/server dev -- --config ./config.dev.mjs
@@ -92,6 +93,16 @@ pnpm --filter @misskey-sensitive-detector/server dev -- --config ./config.dev.mj
 
 統合テストは `SENSITIVE_DETECTOR_TEST_MODEL_DIR` でモデルディレクトリを上書きできる
 （既定: `./nsfw-model`）。モデルが無い環境では自動的に skip する。
+
+E2Eはリポジトリ同梱のモデルと[固定画像](apps/server/e2e/fixtures/README.md)を必須とし、
+欠落時は失敗する。別プロセスでビルド済みserverを起動し、Bearer認証付きの実HTTP通信で
+AI生成の猫画像が `Neutral`、架空の成人を描いたAI生成の水着イラストが `Sexy` を最大確率として返すことと、5クラスの確率が
+有限値かつ0〜1であることを確認する。モデル全体の精度評価や本番のセンシティブ判定ではない。
+起動待ちは最大120秒、HTTP通信は応答本文を含め最大60秒。成功・失敗時ともserverを終了する。
+CIではPR、mainへのpush、手動実行時に独立した `server-e2e` ジョブとして実行する。
+
+`apps/server/e2e/check-images.ts` の `checkImages({ baseUrl, apiKey })` は起動処理と独立しており、
+Docker等で起動したserverにも同じ画像・検証を使用できる。
 
 ## 構成
 
