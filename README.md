@@ -104,6 +104,34 @@ CIではPR、mainへのpush、手動実行時に独立した `server-e2e` ジョ
 `apps/server/e2e/check-images.ts` の `checkImages({ baseUrl, apiKey })` は起動処理と独立しており、
 Docker等で起動したserverにも同じ画像・検証を使用できる。
 
+CIの `Docker (amd64)` / `Docker (arm64)` ジョブは、それぞれ `ubuntu-24.04` /
+`ubuntu-24.04-arm` でイメージをビルド・ロードして起動する。設定だけを読み取り専用でマウントし、
+モデルとserverはイメージ同梱のものを使う。組み込みHEALTHCHECKの `healthy`、`/health` の200、
+認証なしの推論リクエストの401、同じ固定画像の予測を検証する。起動待ちは最大120秒、
+各HTTP通信は本文を含め最大60秒。失敗時はログ・状態を出力し、終了時はコンテナを削除する。
+PR、mainへのpush、手動実行が対象で、レジストリへのログイン・pushは行わない。
+
+Dockerの検証はローカルでも実行できる（Node.js 22以上、GNU `timeout` と `pnpm install` が必要）。
+検証コマンドは既存コンテナを確認するため、呼び出し側で削除を行う。
+
+```sh
+docker build --tag sensitive-detector:e2e .
+export SENSITIVE_DETECTOR_API_KEY=docker-e2e-test-key
+(
+  set -eu
+  timeout --signal=KILL 60s docker create --name sensitive-detector-e2e --publish 127.0.0.1::3009 \
+    --mount "type=bind,source=$PWD/config.docker.mjs,target=/config/config.mjs,readonly" \
+    --env SENSITIVE_DETECTOR_API_KEY sensitive-detector:e2e
+  trap 'timeout --signal=KILL 60s docker rm --force sensitive-detector-e2e' EXIT
+  timeout --signal=KILL 60s docker start sensitive-detector-e2e
+  pnpm test:e2e:docker sensitive-detector-e2e || {
+    timeout --signal=KILL 60s docker logs sensitive-detector-e2e || true
+    timeout --signal=KILL 60s docker inspect sensitive-detector-e2e || true
+    exit 1
+  }
+)
+```
+
 ## 構成
 
 - `packages/core` (`@misskey-sensitive-detector/core`): 推論エンジン。重いネイティブ実依存（onnxruntime-node）はここに集約。
