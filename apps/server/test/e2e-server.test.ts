@@ -1,6 +1,8 @@
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { withServer } from '../e2e/server.js';
@@ -29,7 +31,9 @@ describe('E2E server lifecycle', () => {
   const healthy = `
     import {createServer} from 'node:http';
     const {default: config} = await import(process.argv[3]);
-    createServer((req, res) => res.end('ok')).listen(config.port, config.host);
+    createServer((req, res) => res.end('ok')).listen(config.port, config.host, () => {
+      console.log(JSON.stringify({msg: 'listening on http://' + config.host + ':' + config.port}));
+    });
   `;
   async function expectChildStopped() {
     const pid = Number(await readFile(join(dir, 'pid'), 'utf8'));
@@ -100,5 +104,35 @@ describe('E2E server lifecycle', () => {
     const options = { entry: await entry(healthy), modelDir: join(dir, 'missing') };
     await expect(withServer(async () => {}, options)).rejects.toThrow(/ENOENT/);
     await expect(readFile(join(dir, 'pid'))).rejects.toThrow(/ENOENT/);
+  });
+
+  it('does not accept a healthy competing listener before its own child binds', async () => {
+    const competing = createServer((_req, res) => res.end('ok'));
+    const portFile = join(dir, 'port');
+    const selectedEntry = await entry(`
+      const {default: config} = await import(process.argv[3]);
+      writeFileSync(${JSON.stringify(portFile)}, String(config.port));
+      setInterval(() => {}, 1000);
+    `);
+    const checked = withServer(async () => {}, { entry: selectedEntry, modelDir: dir, startupTimeoutMs: 2_000 });
+    const rejected = expect(checked).rejects.toThrow(/timeout/i);
+    try {
+      let port = 0;
+      for (let attempt = 0; attempt < 100 && !port; attempt++) {
+        port = Number(await readFile(portFile, 'utf8').catch(() => '0'));
+        if (!port) await delay(10);
+      }
+      expect(port).toBeGreaterThan(0);
+      await new Promise<void>((resolve, reject) => {
+        competing.once('error', reject);
+        competing.listen(port, '127.0.0.1', resolve);
+      });
+      await rejected;
+      await expectChildStopped();
+    } finally {
+      competing.closeAllConnections();
+      await new Promise<void>((resolve) => competing.close(() => resolve()));
+      await checked.catch(() => {});
+    }
   });
 });

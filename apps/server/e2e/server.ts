@@ -3,6 +3,7 @@ import { access, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createInterface } from 'node:readline';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { HTTP_TIMEOUT_MS } from './check-images.js';
@@ -22,19 +23,21 @@ async function unusedPort(): Promise<number> {
   return address.port;
 }
 
-async function waitForHealth(baseUrl: string, signal: AbortSignal): Promise<void> {
+async function waitForHealth(baseUrl: string, hasBound: () => boolean, signal: AbortSignal): Promise<void> {
   while (true) {
     signal.throwIfAborted();
-    try {
-      const response = await fetch(new URL('/health', baseUrl), {
-        signal: AbortSignal.any([signal, AbortSignal.timeout(HTTP_TIMEOUT_MS)]),
-      });
-      await response.body?.cancel();
-      if (response.status === 200) return;
-    } catch (error) {
-      signal.throwIfAborted();
-      // Retry refused connections while the model loads; HTTP timeouts are failures.
-      if (!(error instanceof TypeError)) throw error;
+    if (hasBound()) {
+      try {
+        const response = await fetch(new URL('/health', baseUrl), {
+          signal: AbortSignal.any([signal, AbortSignal.timeout(HTTP_TIMEOUT_MS)]),
+        });
+        await response.body?.cancel();
+        if (response.status === 200) return;
+      } catch (error) {
+        signal.throwIfAborted();
+        // Retry refused connections while the model loads; HTTP timeouts are failures.
+        if (!(error instanceof TypeError)) throw error;
+      }
     }
     try {
       await delay(100, undefined, { signal });
@@ -68,7 +71,7 @@ export async function withServer<T>(
     );
     const child = spawn(process.execPath, [fileURLToPath(entry), '--config', configPath], {
       cwd: fileURLToPath(ROOT),
-      env: { ...process.env, NODE_ENV: 'production' },
+      env: { ...process.env, NODE_ENV: 'production', LOG_LEVEL: 'info' },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     const exited = new AbortController();
@@ -78,6 +81,17 @@ export async function withServer<T>(
     };
     child.stdout.on('data', capture);
     child.stderr.on('data', capture);
+    // A released ephemeral port may be claimed by another process. Accept health
+    // only after this child confirms its successful bind via the existing log.
+    let hasBound = false;
+    const lines = createInterface({ input: child.stdout });
+    lines.on('line', (line) => {
+      try {
+        if (JSON.parse(line)?.msg === `listening on http://127.0.0.1:${port}`) hasBound = true;
+      } catch {
+        // Non-JSON diagnostic output is still retained in the captured logs.
+      }
+    });
     child.once('error', (error) => exited.abort(error));
     const closed = new Promise<void>((resolve) => {
       child.once('close', (code, exitSignal) => {
@@ -88,7 +102,7 @@ export async function withServer<T>(
     const running = AbortSignal.any([signal, exited.signal]);
     try {
       const baseUrl = `http://127.0.0.1:${port}`;
-      await waitForHealth(baseUrl, AbortSignal.any([running, AbortSignal.timeout(startupTimeoutMs)]));
+      await waitForHealth(baseUrl, () => hasBound, AbortSignal.any([running, AbortSignal.timeout(startupTimeoutMs)]));
       running.throwIfAborted();
       const result = await check(baseUrl, running);
       running.throwIfAborted();
@@ -103,6 +117,7 @@ export async function withServer<T>(
         await closed;
       } finally {
         clearTimeout(forceKill);
+        lines.close();
       }
     }
   } finally {
