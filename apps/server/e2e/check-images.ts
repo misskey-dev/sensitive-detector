@@ -7,7 +7,7 @@ const CLASSES = ['Drawing', 'Hentai', 'Neutral', 'Porn', 'Sexy'] as const;
 export type Fixture = { file: URL; expectedClass: (typeof CLASSES)[number] };
 export const FIXTURES = [
   { file: new URL('./fixtures/neutral-cat.png', import.meta.url), expectedClass: 'Neutral' },
-  { file: new URL('./fixtures/sexy-bikini.png', import.meta.url), expectedClass: 'Sexy' },
+  { file: new URL('./fixtures/sexy-synthetic-swimwear.png', import.meta.url), expectedClass: 'Sexy' },
 ] as const satisfies readonly Fixture[];
 export const HTTP_TIMEOUT_MS = 60_000;
 

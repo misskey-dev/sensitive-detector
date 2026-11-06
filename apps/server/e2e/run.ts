@@ -6,7 +6,7 @@ try {
   await withSignals((signal) =>
     withServer((baseUrl, running) => checkImages({ baseUrl, apiKey: API_KEY, signal: running }), { signal }),
   );
-  console.log('Server E2E passed: Neutral cat and Sexy bikini predictions.');
+  console.log('Server E2E passed: Neutral cat and Sexy synthetic-swimwear predictions.');
 } catch (error) {
   console.error(error);
   process.exitCode = 1;
