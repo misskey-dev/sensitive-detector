@@ -29,3 +29,63 @@ jobs:
       - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/setup
       - run: pnpm test:e2e
+
+  docker-e2e:
+    name: Docker (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    env:
+      TEST_IMAGE: sensitive-detector:e2e
+      TEST_CONTAINER: sensitive-detector-e2e
+      SENSITIVE_DETECTOR_API_KEY: docker-e2e-test-key
+    steps:
+      - uses: actions/checkout@v7.0.1
+      # The host only runs the HTTP checker. Build the server inside Docker.
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: docker/setup-buildx-action@v4
+      - name: Build and load image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          load: true
+          push: false
+          tags: ${{ env.TEST_IMAGE }}
+          cache-from: type=gha,scope=docker-e2e-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=docker-e2e-${{ matrix.arch }}
+      - name: Start built image
+        run: |
+          timeout --signal=KILL 60s docker create --name "$TEST_CONTAINER" \
+            --publish 127.0.0.1::3009 \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/config.docker.mjs,target=/config/config.mjs,readonly" \
+            --env SENSITIVE_DETECTOR_API_KEY \
+            "$TEST_IMAGE"
+          timeout --signal=KILL 60s docker start "$TEST_CONTAINER"
+      - name: Check health, authentication and image predictions
+        run: pnpm test:e2e:docker "$TEST_CONTAINER"
+      - name: Container diagnostics
+        if: failure()
+        run: |
+          timeout --signal=KILL 60s docker logs "$TEST_CONTAINER" || true
+          timeout --signal=KILL 60s docker inspect "$TEST_CONTAINER" || true
+      - name: Remove test container
+        if: always()
+        run: |
+          timeout --signal=KILL 60s docker rm --force "$TEST_CONTAINER"
