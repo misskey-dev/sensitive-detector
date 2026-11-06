@@ -9,7 +9,7 @@
     "clean": "rm -rf dist",
     "dev": "tsx watch src/main.ts",
     "start": "node dist/main.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.e2e.json"
   },
   "dependencies": {
     "@hono/node-server": "catalog:",

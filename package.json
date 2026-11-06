@@ -16,6 +16,7 @@
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
     "test:integration": "vitest run --project integration",
+    "test:e2e": "node --import tsx apps/server/e2e/run.ts",
     "lint": "pnpm exec -- biome check .",
     "format": "pnpm exec -- biome format --write ."
   },
