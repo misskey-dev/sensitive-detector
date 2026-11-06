@@ -1,4 +1,5 @@
 ---
+
 name: native-deps-guard
 description: onnxruntime-node / Node / Docker ベースイメージなどネイティブ ML スタック依存を上げる前に、glibc・Docker runtime の Node22 との整合を確認する。依存のバージョンを上げる時に使う。
 disable-model-invocation: true

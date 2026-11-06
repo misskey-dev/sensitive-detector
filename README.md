@@ -13,11 +13,11 @@ Misskey 本体の `AiService.detectSensitive`（NSFW 推論）を切り出した
 複数の正規化済み画像を一括推論する。詳しい入出力仕様、型、エラー、実装例は
 [docs/api-detect-images.md](docs/api-detect-images.md) を参照。
 
-| | |
-| --- | --- |
-| Content-Type | `multipart/form-data` |
-| Authorization | `Bearer <token>`（`config.apiKey` 設定時のみ要求） |
-| Body | 各パートに画像バイナリ（フィールド名は任意、順序を保持）。パートの Content-Type は `image/png` |
+|               |                                                                                                |
+| ------------- | ---------------------------------------------------------------------------------------------- |
+| Content-Type  | `multipart/form-data`                                                                          |
+| Authorization | `Bearer <token>`（`config.apiKey` 設定時のみ要求）                                             |
+| Body          | 各パートに画像バイナリ（フィールド名は任意、順序を保持）。パートの Content-Type は `image/png` |
 
 成功（200）:
 
@@ -45,13 +45,13 @@ Misskey 本体の `AiService.detectSensitive`（NSFW 推論）を切り出した
 
 全体失敗（4xx/5xx）はリクエスト全体に問題がある場合のみ:
 
-| code | status | 意味 |
-| --- | --- | --- |
-| `AUTHENTICATION_REQUIRED` | 401 | トークン欠落 / 不一致 |
-| `INVALID_REQUEST` | 400 | パーツなし / multipart パース失敗 |
-| `UNSUPPORTED_MEDIA_TYPE` | 415 | Content-Type が `multipart/form-data` 以外 |
-| `REQUEST_TOO_LARGE` | 413 | リクエストボディが `maxBodySize` 超過、またはパーツ数が `maxParts` 超過 |
-| `DETECTION_FAILED` | 500 | リクエスト処理パイプラインの想定外エラー |
+| code                      | status | 意味                                                                    |
+| ------------------------- | ------ | ----------------------------------------------------------------------- |
+| `AUTHENTICATION_REQUIRED` | 401    | トークン欠落 / 不一致                                                   |
+| `INVALID_REQUEST`         | 400    | パーツなし / multipart パース失敗                                       |
+| `UNSUPPORTED_MEDIA_TYPE`  | 415    | Content-Type が `multipart/form-data` 以外                              |
+| `REQUEST_TOO_LARGE`       | 413    | リクエストボディが `maxBodySize` 超過、またはパーツ数が `maxParts` 超過 |
+| `DETECTION_FAILED`        | 500    | リクエスト処理パイプラインの想定外エラー                                |
 
 パーツ個別の失敗（画像 dimensions 上限超過による `REQUEST_TOO_LARGE`、`IMAGE_DECODE_FAILED` 等）は
 `results[i].error.code` に入り、HTTP は 200。

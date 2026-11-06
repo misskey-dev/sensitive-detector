@@ -1,4 +1,5 @@
 ---
+
 name: api-contract-guard
 description: detect-images の応答形・エラーコード・HTTP ステータス・エラー優先順位・部分成功不変条件に後方互換を壊す変更が無いかを検査する。PR 前や API 周辺を変更した後に使う。
 disable-model-invocation: true
