@@ -87,7 +87,7 @@ async function classifyPart(value: File | string, deps: AppDeps): Promise<BatchI
  * サイズ制限は各パーツ個別に maxBinarySize で検査する。
  */
 export function detectImagesRoute(deps: AppDeps) {
-  return async (c: Context<AppEnv>) => {
+  return async (c: Context<AppEnv>): Promise<Response> => {
     const contentType = c.req.header('content-type') ?? '';
     // media type のみで厳密一致（`multipart/form-data; boundary=...` は許可、`multipart/form-dataxxx` は拒否）。
     if (parseContentType(contentType) !== 'multipart/form-data') {
