@@ -78,7 +78,7 @@ describe('E2E HTTP checks', () => {
     await checkImages({ baseUrl, apiKey: 'test-api-key', fixtures: [fixture] });
     expect(authorization).toBe('Bearer test-api-key');
     expect(contentType).toMatch(/^multipart\/form-data; boundary=/);
-    expect(received).toContain('neutral-cat.png');
+    expect(received).toContain('neutral-synthetic-cat.png');
     expect(received).toContain('\x89PNG\r\n\x1a\n');
   });
 
