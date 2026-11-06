@@ -111,6 +111,11 @@ CIの `Docker (amd64)` / `Docker (arm64)` ジョブは、それぞれ `ubuntu-24
 各HTTP通信は本文を含め最大60秒。失敗時はログ・状態を出力し、終了時はコンテナを削除する。
 PR、mainへのpush、手動実行が対象で、レジストリへのログイン・pushは行わない。
 
+リリース時も同じDocker検証actionを実行し、成功したコンテナが使用したimage IDを
+再ビルドせずGHCRにpushする。amd64・arm64の両方が成功してから、従来のsemverタグの
+manifestを公開する。manifestへの受け渡し用に、実行ID・再実行番号・architectureを含む
+`build-<run-id>-<attempt>-linux-<arch>`補助タグもGHCRに保持する。
+
 Dockerの検証はローカルでも実行できる（Node.js 22以上、GNU `timeout` と `pnpm install` が必要）。
 検証コマンドは既存コンテナを確認するため、呼び出し側で削除を行う。
 
