@@ -19,7 +19,7 @@ catalog:
   pngjs: 7.0.0
   tsdown: 0.22.12
   tsx: 4.22.4
-  typescript: 6.0.3
+  typescript: 7.0.2
   vitest: 4.1.11
 
 # onnxruntime-node はプラットフォーム別のネイティブバイナリを含む。
