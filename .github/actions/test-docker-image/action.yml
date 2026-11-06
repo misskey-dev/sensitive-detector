@@ -1,0 +1,60 @@
+name: Test Docker image
+description: Verify a loaded image with its built-in healthcheck and real image inference
+
+inputs:
+  image:
+    description: Locally loaded Docker image to verify
+    required: true
+
+outputs:
+  image-id:
+    description: Immutable ID of the image used by the verified container
+    value: ${{ steps.image.outputs.id }}
+
+runs:
+  using: composite
+  steps:
+    # The host only runs the HTTP checker. The server and model stay inside Docker.
+    - uses: pnpm/action-setup@v6.1.0
+    - uses: actions/setup-node@v7.1.0
+      with:
+        node-version: 22
+        cache: pnpm
+    - run: pnpm install --frozen-lockfile
+      shell: bash
+    - name: Resolve immutable image
+      id: image
+      shell: bash
+      env:
+        TEST_IMAGE: ${{ inputs.image }}
+      run: |
+        image_id=$(timeout --signal=KILL 60s docker image inspect "$TEST_IMAGE" --format '{{.Id}}')
+        [[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]
+        echo "id=$image_id" >> "$GITHUB_OUTPUT"
+    - name: Start built image
+      shell: bash
+      env:
+        TESTED_IMAGE_ID: ${{ steps.image.outputs.id }}
+        SENSITIVE_DETECTOR_API_KEY: docker-e2e-test-key
+      run: |
+        timeout --signal=KILL 60s docker create --name sensitive-detector-e2e \
+          --publish 127.0.0.1::3009 \
+          --mount "type=bind,source=$GITHUB_WORKSPACE/config.docker.mjs,target=/config/config.mjs,readonly" \
+          --env SENSITIVE_DETECTOR_API_KEY \
+          "$TESTED_IMAGE_ID"
+        timeout --signal=KILL 60s docker start sensitive-detector-e2e
+    - name: Check health, authentication and image predictions
+      shell: bash
+      env:
+        SENSITIVE_DETECTOR_API_KEY: docker-e2e-test-key
+      run: pnpm test:e2e:docker sensitive-detector-e2e
+    - name: Container diagnostics
+      if: failure()
+      shell: bash
+      run: |
+        timeout --signal=KILL 60s docker logs sensitive-detector-e2e || true
+        timeout --signal=KILL 60s docker inspect sensitive-detector-e2e || true
+    - name: Remove test container
+      if: always()
+      shell: bash
+      run: timeout --signal=KILL 60s docker rm --force sensitive-detector-e2e
