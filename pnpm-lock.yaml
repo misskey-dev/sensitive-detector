@@ -177,8 +177,8 @@ catalogs:
       specifier: 6.0.5
       version: 6.0.5
     hono:
-      specifier: 4.13.14
-      version: 4.13.14
+      specifier: 4.13.16
+      version: 4.13.16
     onnxruntime-node:
       specifier: 1.31.1
       version: 1.31.1
@@ -231,13 +231,13 @@ importers:
     dependencies:
       '@hono/node-server':
         specifier: 'catalog:'
-        version: 2.1.6(hono@4.13.14)
+        version: 2.1.6(hono@4.13.16)
       '@misskey-sensitive-detector/core':
         specifier: workspace:*
         version: link:../../packages/core
       hono:
         specifier: 'catalog:'
-        version: 4.13.14
+        version: 4.13.16
       pino:
         specifier: 'catalog:'
         version: 10.4.0
@@ -1073,8 +1073,8 @@ packages:
   help-me@5.0.0:
     resolution: {integrity: sha512-7xgomUX6ADmcYzFik0HzAxh/73YlKR9bmFzf51CZwR+b6YtzU2m0u49hQCqV6SvlqIqsaxovfwdvbnsw3b/zpg==}
 
-  hono@4.13.14:
-    resolution: {integrity: sha512-yhRLQ21U6qa9Hsu2N7Qcbh8tE+WKEcoErjIo56LeSGiGXGp9sA7UpE86Ui9uexb61KakiGwuHMn2QdV7w6i6kQ==}
+  hono@4.13.16:
+    resolution: {integrity: sha512-AOLOEhvrV+iH92xXCnFr/5+3KjPKcI3xP63XJtX5spAnkznPdHijlIsUTpi7/9EhWqrTCekw5c5zh1K+YsVw7A==}
     engines: {node: '>=16.9.0'}
 
   hookable@6.1.2:
@@ -1646,9 +1646,9 @@ snapshots:
   '@esbuild/win32-x64@0.28.0':
     optional: true
 
-  '@hono/node-server@2.1.6(hono@4.13.14)':
+  '@hono/node-server@2.1.6(hono@4.13.16)':
     dependencies:
-      hono: 4.13.14
+      hono: 4.13.16
 
   '@jridgewell/resolve-uri@3.1.2': {}
 
@@ -2021,7 +2021,7 @@ snapshots:
 
   help-me@5.0.0: {}
 
-  hono@4.13.14: {}
+  hono@4.13.16: {}
 
   hookable@6.1.2: {}
 
