@@ -9,7 +9,7 @@ allowBuilds:
 
 catalog:
   "@biomejs/biome": 2.6.8
-  "@hono/node-server": 2.1.9
+  "@hono/node-server": 2.1.11
   "@types/node": 22.20.5
   "@types/pngjs": 6.0.5
   hono: 4.13.19
